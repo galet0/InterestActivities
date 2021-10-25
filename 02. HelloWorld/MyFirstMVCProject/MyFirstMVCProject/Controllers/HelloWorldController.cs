@@ -7,6 +7,9 @@ namespace MyFirstMVCProject.Controllers
     {
         public IActionResult Index()
         {
+            ViewData["Brand"] = "BMW";
+            ViewData["Model"] = "X3";
+
             Car car = new Car()
             {
                 Brand = "BMW",

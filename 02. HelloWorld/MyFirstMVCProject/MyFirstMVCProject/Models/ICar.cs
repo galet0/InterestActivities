@@ -5,10 +5,7 @@ using System.Threading.Tasks;
 
 namespace MyFirstMVCProject.Models
 {
-    public class Car 
+    public class ICar
     {
-        public string Brand {get; set;}
-
-        public string Model { get; set; }
     }
 }
