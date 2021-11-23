@@ -33,7 +33,7 @@ namespace MVCMovie.Controllers
                 return NotFound();
             }
 
-            var movie = await _context.Movies
+            Movie movie = await _context.Movies
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (movie == null)
             {
