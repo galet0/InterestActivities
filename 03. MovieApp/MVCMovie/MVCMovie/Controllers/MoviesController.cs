@@ -20,10 +20,36 @@ namespace MVCMovie.Controllers
         }
 
         // GET: Movies
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string searchString)
         {
-            return View(await _context.Movies.ToListAsync());
+            //Task<List<Movie>> movies = _context.Movies.ToListAsync();
+            var movies = from m in _context.Movies
+                         select m;
+
+            if (!string.IsNullOrEmpty(searchString))
+            {
+                movies = movies.Where(m => m.Title.Contains(searchString));
+            }
+
+            //return View(await _context.Movies.ToListAsync());
+            return View(await movies.ToListAsync());
         }
+
+        //[HttpPost]
+        //public async Task<IActionResult> Index(string searchString, bool notUsed)
+        //{
+        //    //Task<List<Movie>> movies = _context.Movies.ToListAsync();
+        //    var movies = from m in _context.Movies
+        //                 select m;
+
+        //    if (!string.IsNullOrEmpty(searchString))
+        //    {
+        //        movies = movies.Where(m => m.Title.Contains(searchString));
+        //    }
+
+        //    //return View(await _context.Movies.ToListAsync());
+        //    return View(await movies.ToListAsync());
+        //}
 
         // GET: Movies/Details/5
         public async Task<IActionResult> Details(int? id)
@@ -66,6 +92,7 @@ namespace MVCMovie.Controllers
         }
 
         // GET: Movies/Edit/5
+        [HttpGet]
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
