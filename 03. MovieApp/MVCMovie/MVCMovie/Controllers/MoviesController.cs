@@ -1,22 +1,30 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using MVCMovie.Data;
 using MVCMovie.Models;
+using MVCMovie.Models.BindingModels;
+using MVCMovie.Models.ViewModels;
 
 namespace MVCMovie.Controllers
 {
     public class MoviesController : Controller
     {
         private readonly MVCMovieContext _context;
+        private readonly IWebHostEnvironment _webHostEnvironment;
+        private readonly string _wwwRootPath;
 
-        public MoviesController(MVCMovieContext context)
+        public MoviesController(MVCMovieContext context, IWebHostEnvironment webHostEnvironment)
         {
             _context = context;
+            this._webHostEnvironment = webHostEnvironment;
+            _wwwRootPath = _webHostEnvironment.WebRootPath;
         }
 
         // GET: Movies
@@ -61,12 +69,27 @@ namespace MVCMovie.Controllers
 
             Movie movie = await _context.Movies
                 .FirstOrDefaultAsync(m => m.Id == id);
+
+
             if (movie == null)
             {
                 return NotFound();
             }
 
-            return View(movie);
+            DetailsMovieViewModel detailsModel = new DetailsMovieViewModel
+            {
+                Id=movie.Id,
+                Title = movie.Title,
+                ReleaseDate = movie.ReleaseDate,
+                Description = movie.Description,
+                Category = movie.Category,
+                Genre = movie.Genre,
+                Price = movie.Price,
+                Image = movie.Image, 
+                Trailer = movie.Trailer
+            };
+
+            return View(detailsModel);
         }
 
         // GET: Movies/Create
@@ -80,15 +103,81 @@ namespace MVCMovie.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Title,ReleaseDate,Genre,Price")] Movie movie)
+        public async Task<IActionResult> Create([Bind("Id,Title,ReleaseDate,Genre,Price,Description,Category,Image,Trailer")] MovieBindingModel createModel)
         {
             if (ModelState.IsValid)
             {
+                string newGeneratedImageName = this.GetGeneratedFileName(createModel.Image.FileName);
+
+                this.UploadImageFile(createModel, newGeneratedImageName);
+
+
+                string newGeneratedTrailerName = this.GetGeneratedFileName(createModel.Trailer.FileName);
+
+                this.UploadVideoFile(createModel, newGeneratedTrailerName);
+
+                Movie movie = new Movie
+                {
+                    Title = createModel.Title,
+                    ReleaseDate = createModel.ReleaseDate,
+                    Description = createModel.Description,
+                    Category = createModel.Category,
+                    Genre = createModel.Genre,
+                    Price = createModel.Price,
+                    Image = newGeneratedImageName,
+                    Trailer = newGeneratedTrailerName
+                };
+
                 _context.Add(movie);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
-            return View(movie);
+            return View(createModel);
+        }
+
+        private string GetGeneratedFileName(string modelFileName)
+        {
+            string fileName = Path.GetFileNameWithoutExtension(modelFileName);
+
+            string fileExtension = Path.GetExtension(modelFileName);
+
+            string newGeneratedFileName = $"{fileName}_{Guid.NewGuid()}{fileExtension}";
+
+            return newGeneratedFileName;
+        }
+
+        private void UploadImageFile(MovieBindingModel bindingModel, string imageName)
+        {
+            string path = this.CreateFilesPath("images", imageName, bindingModel);
+
+            using (var fileStream = new FileStream(path, FileMode.Create))
+            {
+                bindingModel.Image.CopyTo(fileStream);
+            }
+        }
+
+        private void UploadVideoFile(MovieBindingModel bindingModel, string videoName)
+        {
+            string path = this.CreateFilesPath("videos", videoName, bindingModel);
+
+            using (var fileStream = new FileStream(path, FileMode.Create))
+            {
+                bindingModel.Trailer.CopyTo(fileStream);
+            }
+        }
+
+        private string  CreateFilesPath(string directory, string fileName, MovieBindingModel bindingModel)
+        {
+            string path = Path.Combine($"{_wwwRootPath}/{directory}/", bindingModel.Title);
+
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+            }
+
+            path = Path.Combine($"{_wwwRootPath}/{directory}/{bindingModel.Title}", fileName);
+
+            return path;
         }
 
         // GET: Movies/Edit/5
@@ -105,7 +194,20 @@ namespace MVCMovie.Controllers
             {
                 return NotFound();
             }
-            return View(movie);
+
+            EditMovieBindingModel editModel = new EditMovieBindingModel
+            {
+                Title = movie.Title,
+                ReleaseDate = movie.ReleaseDate,
+                Description = movie.Description,
+                Category = movie.Category,
+                Genre = movie.Genre,
+                Price = movie.Price,
+                ImageUrl = movie.Image,
+                VideoUrl = movie.Trailer
+            };
+
+            return View(editModel);
         }
 
         // POST: Movies/Edit/5
@@ -113,9 +215,9 @@ namespace MVCMovie.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Title,ReleaseDate,Genre,Price")] Movie movie)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Title,ReleaseDate,Genre,Price,Category,Description,Image,Trailer")] EditMovieBindingModel editModel)
         {
-            if (id != movie.Id)
+            if (id != editModel.Id)
             {
                 return NotFound();
             }
@@ -124,12 +226,40 @@ namespace MVCMovie.Controllers
             {
                 try
                 {
+
+                    Movie movie = _context.Movies.Find(editModel.Id);
+
+                    if (editModel.Image != null)
+                    {
+                        string newGeneratedImageFile = this.GetGeneratedFileName(editModel.Image.FileName);
+                        this.UploadImageFile(editModel, newGeneratedImageFile);
+
+                        movie.Image = newGeneratedImageFile;
+                    }
+                   
+                    if(editModel.Trailer != null)
+                    {
+                        string newGeneratedVideoFile = this.GetGeneratedFileName(editModel.Trailer.FileName);
+                        this.UploadVideoFile(editModel, newGeneratedVideoFile);
+
+                        movie.Trailer = newGeneratedVideoFile;
+                    }
+                   
+
+
+                    movie.Title = editModel.Title;
+                    movie.ReleaseDate = editModel.ReleaseDate;
+                    movie.Description = editModel.Description;
+                    movie.Category = editModel.Category;
+                    movie.Genre = editModel.Genre;
+                    movie.Price = editModel.Price;
+
                     _context.Update(movie);
                     await _context.SaveChangesAsync();
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!MovieExists(movie.Id))
+                    if (!MovieExists(editModel.Id))
                     {
                         return NotFound();
                     }
@@ -140,7 +270,7 @@ namespace MVCMovie.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            return View(movie);
+            return View(editModel);
         }
 
         // GET: Movies/Delete/5

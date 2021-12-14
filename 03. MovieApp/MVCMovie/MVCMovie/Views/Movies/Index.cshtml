@@ -6,10 +6,11 @@
 
 <h1>Index</h1>
 
+
 <form asp-controller="Movies" asp-action="Index" method="get">
     <p>
-        Title: <input type="text" name="searchString" value="" />
-        <input type="submit" value="Filter" />
+        Title: <input class="form-control" type="text" name="searchString" placeholder="Search..." />
+        @*<input type="submit" value="Filter" />*@
     </p>
 </form>
 

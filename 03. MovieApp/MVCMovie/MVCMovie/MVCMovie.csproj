@@ -17,4 +17,11 @@
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="5.0.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="wwwroot\images\" />
+    <Folder Include="wwwroot\images\Bai Ivan The Movie\" />
+    <Folder Include="wwwroot\videos\" />
+    <Folder Include="wwwroot\videos\Bai Ivan The Movie\" />
+  </ItemGroup>
+
 </Project>
